@@ -36,24 +36,25 @@ button { font: inherit; cursor: pointer; }
 .chip-btn { border: 0; padding: 0; background: none; }
 
 /* ---------- FABs ---------- */
-#fabs { position: absolute; z-index: 1000; right: 12px; bottom: calc(var(--sheet-peek) + 16px); display: flex; flex-direction: column; gap: 10px; transition: bottom .25s; }
+#fabs { position: absolute; z-index: 1000; right: 12px; bottom: calc(var(--fab-b, 150px) + 16px); display: flex; flex-direction: column; gap: 10px; }
 .fab { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--bg); box-shadow: var(--shadow); display: grid; place-items: center; }
 .fab svg { width: 24px; height: 24px; fill: #444; }
 .fab.on svg { fill: var(--blue); }
-#layerMenu { position: absolute; z-index: 1002; right: 66px; bottom: calc(var(--sheet-peek) + 70px); background: var(--bg); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
+#layerMenu { position: absolute; z-index: 1002; right: 66px; bottom: calc(var(--fab-b, 150px) + 16px); background: var(--bg); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
 #layerMenu button { border: 0; background: none; padding: 12px 16px; text-align: left; }
 #layerMenu button.active { color: var(--blue); font-weight: 600; background: #e8f0fe; }
 
 /* ---------- bottom sheet ---------- */
-#sheet { position: absolute; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 -2px 14px rgba(0,0,0,.18); display: flex; flex-direction: column; height: 88vh; transform: translateY(calc(88vh - var(--sheet-peek))); transition: transform .28s cubic-bezier(.2,.8,.2,1); padding-bottom: env(safe-area-inset-bottom); touch-action: none; }
-#sheet.half { transform: translateY(calc(88vh - 48vh)); }
-#sheet.full { transform: translateY(0); }
+#sheet { position: absolute; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 -2px 14px rgba(0,0,0,.18); display: flex; flex-direction: column; height: var(--sh, 150px); max-height: 100%; transition: height .32s cubic-bezier(.2,.85,.25,1); padding-bottom: env(safe-area-inset-bottom); overflow: hidden; will-change: height; }
 #sheet.dragging { transition: none; }
-#grip { padding: 8px 0 4px; display: flex; justify-content: center; cursor: grab; flex: none; }
-#grip span { width: 40px; height: 5px; border-radius: 3px; background: #d0d4da; }
-#sheetHead { padding: 2px 16px 10px; flex: none; }
-#sheetBody { flex: 1; overflow-y: auto; touch-action: pan-y; padding: 0 0 20px; -webkit-overflow-scrolling: touch; }
-#sheet:not(.full) #sheetBody { overscroll-behavior: contain; }
+#grip { padding: 10px 0 8px; display: flex; justify-content: center; cursor: grab; flex: none; touch-action: none; }
+#grip span { width: 42px; height: 5px; border-radius: 3px; background: #c4c8ce; }
+#sheetHead { padding: 0 16px 10px; flex: none; touch-action: none; }
+#sheetBody { flex: 1; min-height: 0; overflow-y: auto; touch-action: pan-y; padding: 0 0 24px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#fabs, #layerMenu { transition: bottom .32s cubic-bezier(.2,.85,.25,1), opacity .2s; }
+body:has(#sheet.dragging) #fabs { transition: opacity .2s; }
+#fabs.fab-hide { opacity: 0; pointer-events: none; }
+html, body { overscroll-behavior: none; }
 
 .h-title { font-size: 19px; font-weight: 700; line-height: 1.25; display: flex; align-items: center; gap: 10px; }
 .h-sub { color: var(--muted); font-size: 13.5px; margin-top: 4px; }

@@ -1,5 +1,5 @@
 // Service worker: кэширует оболочку приложения, данные API всегда берутся из сети.
-const CACHE = 'nsbus-v3';
+const CACHE = 'nsbus-v4';
 const SHELL = ['./', 'index.html', 'app.css', 'i18n.js', 'app.js', 'vendor/leaflet.js', 'vendor/leaflet.css', 'icon.svg', 'manifest.webmanifest'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {

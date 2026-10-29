@@ -171,57 +171,133 @@ const joinLegs = (legs) => {
 // ======================================================================= bottom sheet
 const sheet = $('#sheet');
 const isDesktop = () => window.matchMedia('(min-width: 820px)').matches;
+/* Шторка как в Яндекс Картах: идёт за пальцем, 3 положения (свёрнута / половина / почти весь экран),
+   учитывает скорость смахивания; список внутри прокручивается в любом положении. */
+const SHEET = { state: 'peek', h: 150, drag: null };
+const viewH = () => window.innerHeight;
+const SH = {
+  peek: () => {
+    const hh = ($('#grip').offsetHeight || 17) + ($('#sheetHead').offsetHeight || 80) + 6;
+    return Math.round(clamp(hh, 96, viewH() * 0.42));
+  },
+  half: () => Math.round(viewH() * 0.5),
+  full: () => {
+    const sb = document.querySelector('#topbar .search');
+    const top = sb ? sb.getBoundingClientRect().bottom + 8 : 66;
+    return Math.round(viewH() - top);
+  },
+};
+function applySheetH(px, animate) {
+  SHEET.h = px;
+  sheet.classList.toggle('dragging', !animate);
+  sheet.style.setProperty('--sh', px + 'px');
+  const half = SH.half();
+  document.documentElement.style.setProperty('--fab-b', Math.min(px, half) + 'px');
+  $('#fabs').classList.toggle('fab-hide', px > half + 40);
+}
 function setSheet(state) {
   if (isDesktop()) return;
+  SHEET.state = state;
   sheet.classList.remove('peek', 'half', 'full');
   sheet.classList.add(state);
-  sheet.style.transform = '';
-  document.documentElement.style.setProperty('--sheet-peek', '150px');
+  applySheetH(SH[state](), true);
 }
+const sheetH = () => (isDesktop() ? 0 : SH[SHEET.state]());
 (function sheetDrag() {
-  let y0 = null, base = 0, moved = false;
-  const H = () => window.innerHeight * 0.88;
-  const pos = { peek: () => H() - 150, half: () => H() - window.innerHeight * 0.48, full: () => 0 };
-  const cur = () => (sheet.classList.contains('full') ? 'full' : sheet.classList.contains('half') ? 'half' : 'peek');
-  const start = (e) => {
-    if (isDesktop()) return;
-    if (e.target.closest('button, .tab, input')) return;
-    y0 = e.clientY; base = pos[cur()](); moved = false;
-    sheet.classList.add('dragging');
-    sheet.setPointerCapture?.(e.pointerId);
+  const order = ['peek', 'half', 'full'];
+  const begin = (y) => {
+    SHEET.drag = { y0: y, h0: SHEET.h, lastY: y, lastT: performance.now(), v: 0, moved: false };
   };
-  const move = (e) => {
-    if (y0 === null) return;
-    const dy = e.clientY - y0;
-    if (Math.abs(dy) > 4) moved = true;
-    sheet.style.transform = `translateY(${clamp(base + dy, 0, H() - 90)}px)`;
+  const moveTo = (y) => {
+    const d = SHEET.drag;
+    const now = performance.now();
+    const dt = Math.max(1, now - d.lastT);
+    d.v = 0.7 * ((d.lastY - y) / dt) + 0.3 * d.v;   // px/ms, «+» — вверх
+    d.lastY = y; d.lastT = now;
+    if (Math.abs(y - d.y0) > 5) d.moved = true;
+    const lo = 70, hi = SH.full();
+    let h = d.h0 + (d.y0 - y);
+    if (h > hi) h = hi + (h - hi) * 0.25;            // «резинка» за краями
+    if (h < lo) h = lo - (lo - h) * 0.25;
+    applySheetH(Math.round(h), false);
   };
-  const end = (e) => {
-    if (y0 === null) return;
-    sheet.classList.remove('dragging');
-    const y = clamp(base + (e.clientY - y0), 0, H());
-    y0 = null;
-    if (!moved) { sheet.style.transform = ''; if (cur() === 'peek') setSheet('half'); return; }
-    let best = 'peek', bd = 1e9;
-    for (const k of Object.keys(pos)) { const d = Math.abs(pos[k]() - y); if (d < bd) { bd = d; best = k; } }
+  const finish = () => {
+    const d = SHEET.drag;
+    SHEET.drag = null;
+    if (!d) return false;
+    if (!d.moved) { applySheetH(SH[SHEET.state](), true); return false; }
+    if (performance.now() - d.lastT > 120) d.v = 0;  // палец остановился перед отпусканием
+    const h = SHEET.h;
+    const hs = order.map((k) => [k, SH[k]()]);
+    let best;
+    if (d.v > 0.4) best = (hs.find(([, v]) => v > h + 8) || hs[hs.length - 1])[0];
+    else if (d.v < -0.4) best = ([...hs].reverse().find(([, v]) => v < h - 8) || hs[0])[0];
+    else best = hs.reduce((a, b) => (Math.abs(b[1] - h) < Math.abs(a[1] - h) ? b : a))[0];
     setSheet(best);
+    return true;
   };
-  for (const elx of [$('#grip'), $('#sheetHead')]) {
-    elx.addEventListener('pointerdown', start);
-    elx.addEventListener('pointermove', move);
-    elx.addEventListener('pointerup', end);
-    elx.addEventListener('pointercancel', end);
+
+  // 1) ручка и шапка: тянем всегда (кнопки нажимаются, если палец не сдвинулся)
+  let pid = null, suppressClick = false;
+  const handle = [$('#grip'), $('#sheetHead')];
+  for (const el of handle) {
+    el.addEventListener('pointerdown', (e) => {
+      if (isDesktop() || e.button > 0 || e.target.closest('input, select, textarea')) return;
+      pid = e.pointerId; begin(e.clientY);
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (pid !== e.pointerId || !SHEET.drag) return;
+      if (!SHEET.drag.moved && Math.abs(e.clientY - SHEET.drag.y0) > 5) el.setPointerCapture?.(e.pointerId);
+      moveTo(e.clientY);
+    });
+    const up = (e) => {
+      if (pid !== e.pointerId) return;
+      pid = null;
+      const wasTap = SHEET.drag && !SHEET.drag.moved;
+      if (finish()) suppressClick = true;
+      else if (wasTap && e.type === 'pointerup' && (el.id === 'grip' || (SHEET.state === 'peek' && !e.target.closest('button, a, [data-f], .tab')))) {
+        setSheet(SHEET.state === 'peek' ? 'half' : SHEET.state === 'half' ? 'full' : 'half');
+      }
+    };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
   }
-  // на мобильном: если список прокручен вверх до упора и тянут вниз — сворачиваем
+  sheet.addEventListener('click', (e) => { if (suppressClick) { suppressClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
+
+  // 2) список: обычная прокрутка; шторка тянется, когда прокручивать нечего / список в самом верху
   const body = $('#sheetBody');
-  let ty = null;
-  body.addEventListener('touchstart', (e) => { ty = e.touches[0].clientY; }, { passive: true });
-  body.addEventListener('touchmove', (e) => {
-    if (ty === null || isDesktop()) return;
-    const dy = e.touches[0].clientY - ty;
-    if (cur() !== 'full' && dy < -30) { setSheet(cur() === 'peek' ? 'half' : 'full'); ty = null; }
-    else if (body.scrollTop <= 0 && dy > 50) { setSheet(cur() === 'full' ? 'half' : 'peek'); ty = null; }
+  let t = null;
+  body.addEventListener('touchstart', (e) => {
+    if (isDesktop() || e.touches.length > 1) { t = null; return; }
+    t = { y0: e.touches[0].clientY, mode: null };
   }, { passive: true });
+  body.addEventListener('touchmove', (e) => {
+    if (!t) return;
+    const y = e.touches[0].clientY;
+    const dy = y - t.y0;                              // «+» — палец вниз
+    if (t.mode === null) {
+      if (dy === 0) return;
+      const atTop = body.scrollTop <= 0;
+      const canScroll = body.scrollHeight > body.clientHeight + 2;
+      const small = SHEET.h < SH.half() - 20;
+      if (!e.cancelable) t.mode = 'scroll';
+      else if (small) t.mode = 'drag';                       // свёрнута — любое движение тянет шторку
+      else if (dy > 0 && atTop) t.mode = 'drag';             // тянем вниз, список уже вверху
+      else if (dy < 0 && SHEET.state !== 'full' && (!canScroll || atTop)) t.mode = 'drag'; // вверх — раскрываем
+      else t.mode = 'scroll';
+      if (t.mode === 'drag') begin(t.y0);
+    } else if (t.mode === 'scroll' && dy > 0 && body.scrollTop <= 0 && e.cancelable) {
+      t.mode = 'drag'; begin(y);                              // докрутили до верха и тянем дальше
+    }
+    if (t.mode === 'drag') { e.preventDefault(); moveTo(y); }
+  }, { passive: false });
+  const tend = () => { if (t && t.mode === 'drag') { if (finish()) suppressClick = true; } t = null; };
+  body.addEventListener('touchend', tend);
+  body.addEventListener('touchcancel', tend);
+
+  // свёрнутое положение подстраивается под высоту шапки; при повороте экрана — пересчёт
+  if (window.ResizeObserver) new ResizeObserver(() => { if (!SHEET.drag && SHEET.state === 'peek' && !isDesktop()) applySheetH(SH.peek(), true); }).observe($('#sheetHead'));
+  window.addEventListener('resize', () => { if (!isDesktop()) setSheet(SHEET.state); });
 })();
 
 // ======================================================================= navigation
@@ -440,12 +516,12 @@ function offsetForSheet(ll, z) {
     const p = map.project(ll, z).subtract([200, 0]);
     return map.unproject(p, z);
   }
-  const p = map.project(ll, z).add([0, window.innerHeight * 0.22]);
+  const p = map.project(ll, z).add([0, Math.min(sheetH(), window.innerHeight * 0.55) / 2]);
   return map.unproject(p, z);
 }
 function fitWithSheet(bounds) {
   if (isDesktop()) map.fitBounds(bounds, { paddingTopLeft: [440, 40], paddingBottomRight: [60, 40] });
-  else map.fitBounds(bounds, { paddingTopLeft: [20, 70], paddingBottomRight: [20, window.innerHeight * 0.5] });
+  else map.fitBounds(bounds, { paddingTopLeft: [20, 70], paddingBottomRight: [20, Math.min(sheetH(), window.innerHeight * 0.55) + 10] });
 }
 
 // ======================================================================= ETA estimation along a trip
