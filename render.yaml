@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: nsbus
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/health

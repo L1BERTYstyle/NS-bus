@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a73e8">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>NS Bus — автобусы Нови-Сада</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Верхняя панель поиска -->
+  <div id="topbar">
+    <div class="search">
+      <svg viewBox="0 0 24 24" class="ico"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 9.5 16a6.5 6.5 0 0 0 4.2-1.6l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+      <input id="q" type="search" placeholder="" data-i18n-ph="searchPh" autocomplete="off">
+      <button id="qclear" class="iconbtn hidden" data-i18n-title="clear">✕</button>
+    </div>
+    <div id="results" class="hidden"></div>
+  </div>
+
+  <!-- Кнопки на карте -->
+  <div id="fabs">
+    <button id="btnRoute" class="fab fab-route" data-i18n-title="routeBtn">
+      <svg viewBox="0 0 24 24"><path d="M21.7 11.3 12.7 2.3a1 1 0 0 0-1.4 0l-9 9a1 1 0 0 0 0 1.4l9 9a1 1 0 0 0 1.4 0l9-9a1 1 0 0 0 0-1.4zM14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/></svg>
+    </button>
+    <button id="btnLayers" class="fab" data-i18n-title="layersBtn">
+      <svg viewBox="0 0 24 24"><path d="M12 16.5 4.6 10.8 3 12l9 7 9-7-1.6-1.2L12 16.5zM12 14l7.4-5.7L21 7l-9-7-9 7 1.6 1.3L12 14z" transform="translate(0 2)"/></svg>
+    </button>
+    <button id="btnLocate" class="fab" data-i18n-title="locateBtn">
+      <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.1A7 7 0 0 0 13 5.1V3h-2v2.1A7 7 0 0 0 5.1 11H3v2h2.1a7 7 0 0 0 5.9 5.9V21h2v-2.1a7 7 0 0 0 5.9-5.9H21v-2zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+    </button>
+  </div>
+  <div id="layerMenu" class="hidden">
+    <button data-layer="map" class="active" data-i18n="layerMap">Схема (Google)</button>
+    <button data-layer="traffic" data-i18n="layerTraffic">Пробки и перекрытия (Google)</button>
+    <button data-layer="hybrid" data-i18n="layerSat">Спутник (Google)</button>
+    <button data-layer="osm">OpenStreetMap</button>
+    <div class="lang-row"><span data-i18n="language">Язык</span> <button data-lang="ru">Русский</button><button data-lang="sr">Srpski</button></div>
+  </div>
+
+  <!-- Нижняя шторка / боковая панель -->
+  <div id="sheet" class="peek">
+    <div id="grip"><span></span></div>
+    <div id="sheetHead"></div>
+    <div id="sheetBody"></div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
+  <script src="vendor/leaflet.js"></script>
+  <script src="i18n.js"></script>`n  <script src="app.js"></script>
+</body>
+</html>
